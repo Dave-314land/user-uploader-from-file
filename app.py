@@ -1,12 +1,22 @@
 import os
 import pandas
+from sqlalchemy import create_engine
 from flask import Flask, flash, request, redirect, url_for
 from werkzeug.utils import secure_filename
+from config_vars import UPLOAD_FOLDER, DSN
 
 
 PATH = os.getcwd()
-PROCESSING_DIR = "processing"
-PROCESSING_DIR_FILE_PATH = PATH + "\\" + PROCESSING_DIR + "\\"
+PROCESSING_DIR = UPLOAD_FOLDER
+PROCESSING_DIR_FILE_PATH = f"{PATH}\\{PROCESSING_DIR}\\"
+engine = create_engine(f"mssql+pyodbc://@{DSN}")
+
+
+def connect_to_database():
+    connection = engine.connect()
+    if connection:
+        print('connected!')
+    connection.close() 
 
 
 app = Flask(__name__)
@@ -16,6 +26,7 @@ app.config.from_pyfile(CONFIG_FILE)
 
 @app.route("/success")
 def success_message():
+    connect_to_database()
     return "<p>Success!</p>"
 
 
@@ -34,7 +45,7 @@ def upload_file():
             return redirect(request.url)
         if file:
             filename = secure_filename(file.filename)
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+            file.save(os.path.join(PROCESSING_DIR_FILE_PATH, filename))
             return redirect(url_for('success_message', name=filename))
     return '''
     <!doctype html>
@@ -59,5 +70,3 @@ if (__name__ == "__main__"):
             user_df_dict[file] = pandas.read_csv(PROCESSING_DIR_FILE_PATH + file)
         except UnicodeDecodeError:
             user_df_dict[file] = pandas.read_csv(PROCESSING_DIR_FILE_PATH + file, encoding="ISO-8859-1")
-
-    print(user_df_dict)
